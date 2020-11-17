@@ -10,6 +10,8 @@ use PhpBeans\Event\BeforeInstanceBeanEvent;
 use PhpBeans\Metadata\ClassMetadata;
 use Psr\Container\ContainerInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\SimpleCache\CacheInterface;
+use Psr\SimpleCache\InvalidArgumentException;
 use ReflectionFunction;
 use ReflectionParameter;
 use Traversable;
@@ -39,13 +41,16 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     private array $methodMetadatas = [];
     
     private EventDispatcherInterface $eventDispatcher;
+
+    private CacheInterface $cache;
     
     private const WAITING = 1;
     private const INSTANTIATING = 1;
     private const INSTANTIATED = 2;
     
-    public function __construct(EventDispatcherInterface $eventDispatcher) {
+    public function __construct(EventDispatcherInterface $eventDispatcher, CacheInterface $cache) {
         $this->eventDispatcher = $eventDispatcher;
+        $this->cache = $cache;
         $this->beans[ContainerInterface::class] = $this;
         $this->beans[get_class($this)] = $this;
     }
@@ -249,6 +254,24 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
         
         if ($bean instanceof MethodMetadata) {
             return $bean->class->name;
+        }
+    }
+
+    private function isFresh(string $id): bool {
+        return $this->hasMetadata($id) && $this->getMetadata($id)->isFresh();
+    }
+
+    private function addToCache(string $id) {
+        try {
+            $this->cache->set("container.bean.$id", $this->get($id));
+        } catch (\Throwable $e) {
+            // catch all
+        }
+    }
+
+    private function getFromCache(string $id) {
+        if ($this->isFresh($id)) {
+            return $this->cache->get($id);
         }
     }
 }

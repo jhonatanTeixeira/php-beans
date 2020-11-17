@@ -2,16 +2,21 @@
 
 namespace PhpBeans\Scanner;
 
+use Laminas\Code\Reflection\ClassReflection;
 use Laminas\Code\Reflection\FileReflection;
 use Metadata\MetadataFactory;
 use Symfony\Component\Finder\Finder;
 use Vox\Metadata\ClassMetadata;
 
-class ComponentScanner {
+class ComponentScanner
+{
     private MetadataFactory $metadataFactory;
+
+    private bool $debug;
     
-    public function __construct(MetadataFactory $metadataFactory) {
+    public function __construct(MetadataFactory $metadataFactory, $debug = false) {
         $this->metadataFactory = $metadataFactory;
+        $this->debug = $debug;
     }
 
     /**
@@ -31,8 +36,10 @@ class ComponentScanner {
                                  $loader->getPrefixesPsr4()[$namespace] ?? []);
         }
 
+        /* @var $class ClassReflection */
         foreach($this->getFiles($className, $paths) as $class) {
             $metadata = $this->metadataFactory->getMetadataForClass($class->getName());
+            $metadata->fileResources[] = $class->getDeclaringFile();
 
             if ($metadata->hasAnnotation($className) || $this->implementsInterface($class, $className)
                 || $class->isSubclassOf($className)) {
