@@ -5,10 +5,12 @@ namespace PhpBeansTest\Bean;
 
 
 use PhpBeans\Factory\ContainerBuilder;
+use PhpBeansTest\Annotation\TestImport;
 use PhpBeansTest\Stub\BarComponent;
 use PhpBeansTest\Stub\BazComponent;
 use PhpBeansTest\Stub\BeanComponent;
 use PhpBeansTest\Stub\FooComponent;
+use PhpBeansTest\Stub\TestImportService;
 use PHPUnit\Framework\TestCase;
 use Vox\Cache\Factory;
 
@@ -21,7 +23,9 @@ class BeanRegistererTest extends TestCase
         $builder = new ContainerBuilder();
 
         $builder->withAllNamespaces()
-            ->withBeans(['someValue' => 'lorem ipsum']);
+            ->withBeans(['someValue' => 'lorem ipsum'])
+            ->withStereotypes(TestImport::class)
+        ;
 
         if ($withCache) {
             $builder->withCache(
@@ -54,6 +58,8 @@ class BeanRegistererTest extends TestCase
         );
 
         $this->assertInstanceOf(FooComponent::class, $container->get(BazComponent::class)->getFooComponent());
+        $this->assertInstanceOf(TestImportService::class, $container->get(TestImportService::class));
+        $this->assertEquals("lorem ipsum", $container->get(TestImportService::class)->value);
     }
 
     public function provider() {

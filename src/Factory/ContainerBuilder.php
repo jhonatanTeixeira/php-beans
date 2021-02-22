@@ -44,9 +44,6 @@ class ContainerBuilder
         $this->debug = $debug;
     }
 
-    /**
-     * @return string[]
-     */
     public function withAllNamespaces()
     {
         $this->namespaces = [
@@ -106,7 +103,8 @@ class ContainerBuilder
             new ComponentScanner($factory, $this->debug, $this->cache),
             $container,
             $this->namespaces,
-            $this->stereotypes
+            $this->stereotypes,
+            $factory,
         );
 
         $registerer->registerBeans();

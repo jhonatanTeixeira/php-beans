@@ -2,10 +2,13 @@
 
 namespace PhpBeans\Bean;
 
+use Metadata\MetadataFactory;
 use PhpBeans\Annotation\Bean;
 use PhpBeans\Annotation\Component;
 use PhpBeans\Annotation\Configuration;
+use PhpBeans\Annotation\Imports;
 use PhpBeans\Annotation\PostBeanProcessor;
+use PhpBeans\Annotation\Value;
 use PhpBeans\Container\Container;
 use PhpBeans\Metadata\ClassMetadata;
 use PhpBeans\Processor\AbstractStereotypeProcessor;
@@ -13,6 +16,8 @@ use PhpBeans\Scanner\ComponentScanner;
 
 class BeanRegisterer 
 {
+    use ValueProcessorTrait;
+
     /**
      * @var string[]
      */
@@ -26,9 +31,12 @@ class BeanRegisterer
     private ComponentScanner $componentScanner;
     
     private Container $container;
+
+    private MetadataFactory $metadataFactory;
     
     public function __construct(ComponentScanner $componentScanner, Container $container,
-                                array $namespaces = [], array $componentClasses = []) {
+                                array $namespaces = [], array $componentClasses = [],
+                                MetadataFactory $metadataFactory) {
         $this->componentScanner = $componentScanner;
         $this->container = $container;
         
@@ -42,6 +50,8 @@ class BeanRegisterer
             ],
             $componentClasses
         );
+
+        $this->metadataFactory = $metadataFactory;
     }
 
     
@@ -74,6 +84,16 @@ class BeanRegisterer
 
             foreach ($components as $metadata) {
                 $this->registerComponent($metadata);
+                /* @var $componentMetadata ClassMetadata */
+                $componentMetadata = $this->metadataFactory->getMetadataForClass($componentClass);
+
+                if ($componentMetadata->hasAnnotation(Imports::class)) {
+                    foreach ($componentMetadata->getAnnotation(Imports::class)->configurations as $configuration) {
+                        $configMetadata = $this->metadataFactory->getMetadataForClass($configuration);
+                        $configMetadata->annotations[Configuration::class] = new Configuration();
+                        $this->registerComponent($configMetadata);
+                    }
+                }
             }
         }
     }
@@ -94,14 +114,19 @@ class BeanRegisterer
         return $this;
     }
     
-    public function registerFactory(string $id, callable $factory) {
-        $this->container->set($id, $factory);
+    public function resolveConfigurationValues() {
+        foreach ($this->container->getBeansByComponent(Configuration::class) as $configuration) {
+            $metadata = $this->metadataFactory->getMetadataForClass(get_class($configuration));
 
-        return $this;
+            foreach($metadata->getAnnotatedProperties(Value::class) as $property) {
+                $this->process($property, $configuration, $this->container, $property->getAnnotation(Value::class));
+            }
+        }
     }
-    
+
     public function registerBeans() {
         $this->registerComponents();
+        $this->resolveConfigurationValues();
         $this->registerFactories();
         
         /* @var $processor AbstractStereotypeProcessor */

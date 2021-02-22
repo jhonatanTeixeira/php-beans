@@ -1,13 +1,17 @@
 <?php
 
 
-namespace PhpBeansTest\Stub;
+namespace PhpBeansTest\Config;
 
 use PhpBeans\Annotation\Bean;
 use PhpBeans\Annotation\Configuration;
+use PhpBeansTest\Annotation\TestImport;
+use PhpBeansTest\Stub\BarComponent;
+use PhpBeansTest\Stub\BeanComponent;
 
 /**
  * @Configuration
+ * @TestImport
  */
 class BeanConfiguration
 {
