@@ -3,36 +3,29 @@
 namespace PhpBeans\Bean;
 
 use PhpBeans\Annotation\Autowired;
-use PhpBeans\Annotation\PostBeanProcessor;
 use PhpBeans\Container\Container;
 use PhpBeans\Container\ContainerException;
+use Vox\Metadata\PropertyMetadata;
+use PhpBeans\Annotation\PostBeanProcessor;
 
 /**
  * @PostBeanProcessor
  */
-class AutowirePostBeanProcessor 
+class AutowirePostBeanProcessor extends AbstractPropertyPostBeanProcessor
 {
-    public function __invoke(Container $container) {
-        foreach ($container as $id => $bean) {
-            if (!$container->hasMetadata($id)) {
-                continue;
-            }
+    public function getAnnotationClass(): string {
+        return Autowired::class;
+    }
 
-            $metadata = $container->getMetadata($id);
+    public function process(PropertyMetadata $property, $bean, Container $container, $annotation) {
+        $type = $property->type;
 
-            foreach ($metadata->getAnnotatedProperties(Autowired::class) as $autowired) {
-                $type = $autowired->type;
-                /* @var $annotation Autowired */
-                $annotation = $autowired->getAnnotation(Autowired::class);
+        $dependency = $annotation->beanId ?: $type;
 
-                $dependency = $annotation->beanId ?: $type;
-
-                if (!$dependency) {
-                    throw new ContainerException("Autowired must have a type or a bean id configured");
-                }
-
-                $autowired->setValue($bean, $container->get($dependency));
-            }
+        if (!$dependency) {
+            throw new ContainerException("Autowired must have a type or a bean id configured");
         }
+
+        $property->setValue($bean, $container->get($dependency));
     }
 }

@@ -3,14 +3,14 @@
 namespace PhpBeans\Factory;
 
 use Composer\Autoload\ClassLoader;
-use Metadata\Cache\CacheInterface;
-use Metadata\Cache\PsrCacheAdapter;
 use PhpBeans\Bean\BeanRegisterer;
 use PhpBeans\Container\Container;
 use PhpBeans\Event\EventDispatcher;
 use PhpBeans\Metadata\ClassMetadata;
 use PhpBeans\Scanner\ComponentScanner;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\SimpleCache\CacheInterface;
+use Vox\Metadata\Cache\PsrSimpleCacheAdapter;
 use Vox\Metadata\Factory\MetadataFactoryFactory;
 
 class ContainerBuilder
@@ -33,11 +33,15 @@ class ContainerBuilder
 
     private ?string $withYamlMetadata = null;
 
-    private CacheInterface $cache;
+    private ?CacheInterface $cache = null;
 
-    public function __construct()
+    private bool $debug;
+
+    public function __construct($debug = false)
     {
         $this->loader = require 'vendor/autoload.php';
+        $this->eventDispatcher = new EventDispatcher();
+        $this->debug = $debug;
     }
 
     /**
@@ -86,7 +90,7 @@ class ContainerBuilder
     }
 
     public function build(): Container {
-        $container = new Container($this->eventDispatcher ?? new EventDispatcher());
+        $container = new Container($this->eventDispatcher, $this->debug, $this->cache);
 
         foreach ($this->beans as $id => $value) {
             $container->set($id, $value);
@@ -95,17 +99,21 @@ class ContainerBuilder
         $factory = $this->buildMetadataFactory();
 
         if (isset($this->cache)) {
-            $factory->setCache(new PsrCacheAdapter());
+            $factory->setCache(new PsrSimpleCacheAdapter($this->cache));
         }
 
         $registerer = new BeanRegisterer(
-            new ComponentScanner($this->buildMetadataFactory()),
+            new ComponentScanner($factory, $this->debug, $this->cache),
             $container,
             $this->namespaces,
             $this->stereotypes
         );
 
         $registerer->registerBeans();
+
+        if (!$this->debug) {
+            $container->cacheUp();
+        }
 
         return $container;
     }

@@ -5,6 +5,7 @@ namespace PhpBeans\Scanner;
 use Laminas\Code\Reflection\ClassReflection;
 use Laminas\Code\Reflection\FileReflection;
 use Metadata\MetadataFactory;
+use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Finder\Finder;
 use Vox\Metadata\ClassMetadata;
 
@@ -13,15 +14,16 @@ class ComponentScanner
     private MetadataFactory $metadataFactory;
 
     private bool $debug;
+
+    private ?CacheInterface $cache;
     
-    public function __construct(MetadataFactory $metadataFactory, $debug = false) {
+    public function __construct(MetadataFactory $metadataFactory, $debug = false, ?CacheInterface $cache = null) {
         $this->metadataFactory = $metadataFactory;
         $this->debug = $debug;
+        $this->cache = $cache;
     }
 
     /**
-     * @param string $className
-     * 
      * @return ClassMetadata[]
      */
     public function scanComponentsFor(string $className, string ...$namespaces): array {
@@ -58,61 +60,64 @@ class ComponentScanner
     }
 
     private function getFiles(string $className, array $paths) {
-        if (PHP_OS_FAMILY == 'Windows') {
-            return $this->getFilesWindows($className, $paths);
-        }
+        $files = $this->findFiles($className, $paths);
 
-        return $this->getFilesLinux($className, $paths);
+        foreach ($files as $file) {
+            try {
+                yield from (new FileReflection($file, true))->getClasses();
+            } catch (\Throwable $e) {
+                yield from [];
+            }
+        }
     }
 
-    private function getFilesLinux(string $className, array $paths) {
-        $output = [];
-        $exitCode = 0;
+    public function findFiles(string $className, array $paths) {
+        $cacheKey = sprintf('scanner.%s-%s', str_replace('\\', '', $className), md5(implode('-', $paths)));
 
-        $command = sprintf('grep -rP "(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)" %2$s',
-            $this->getShortClassName($className),
-            implode(" ", $paths));
+        if ($this->cache && $this->cache->has($cacheKey)) {
+            return $this->cache->get($cacheKey);
+        }
+
+        if (PHP_OS_FAMILY == 'Windows') {
+            $files = $this->findFilesWindows($className, $paths);
+        } else {
+            $files = $this->findFilesLinux($className, $paths);
+        }
+
+        if ($this->cache) {
+            $this->cache->set($cacheKey, $files);
+        }
+
+        return $files;
+    }
+
+    private function findFilesLinux(string $className, array $paths) {
+        $command = trim(sprintf('grep -rP "(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)" %2$s',
+                                $this->getShortClassName($className),
+                                implode(" ", $paths)));
 
         $result = exec($command, $output, $exitCode);
 
-        if ($exitCode > 0) {
-            throw new \RuntimeException("error to execute SO scanner: $command, $result, $exitCode");
-        }
-
-        foreach ($output as $line) {
-            yield from $this->getClassesFromLine($line);
-        }
-    }
-
-    private function getFilesWindows(string $className, array $paths) {
-        $files = (new Finder())->in($paths)
-            ->contains(sprintf('/(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)/',
-                       $this->getShortClassName($className)))
-            ->getIterator();
-
-        foreach ($files as $file) {
-            yield from (new FileReflection($file, true))->getClasses();
-        }
-    }
-
-    private function getClassesFromLine(string $line) {
-        try {
+        return array_filter(array_map(function ($line) {
             preg_match('/.*\.php/', $line, $matches);
 
             if (!$matches) {
-                return [];
+                return null;
             }
 
-            $file = trim($matches[0]);
-
-            return (new FileReflection($file, true))->getClasses();
-        } catch (\Throwable $e) {
-            return [];
-        }
+            return trim($matches[0]);
+        }, $output));
     }
-    
+
+    private function findFilesWindows(string $className, array $paths) {
+        return (new Finder())->in($paths)
+            ->contains(sprintf('/(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)/',
+                       $this->getShortClassName($className)))
+            ->getIterator();
+    }
+
     private function getShortClassName(string $className): string {
-        return basename($className);
+        return basename(str_replace("\\", "/", $className));
     }
 
     private function implementsInterface(\ReflectionClass $class, string $interface) {

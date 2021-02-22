@@ -58,7 +58,8 @@ class BeanRegisterer
     }
     
     public function registerComponents() {
-        $configurators = $this->componentScanner->scanComponentsFor(BeanRegistererConfiguratorInterface::class);
+        $configurators = $this->componentScanner
+            ->scanComponentsFor(BeanRegistererConfiguratorInterface::class, ...$this->namespaces);
 
         /* @var $configurator BeanRegistererConfiguratorInterface */
         foreach ($configurators as $configurator) {
