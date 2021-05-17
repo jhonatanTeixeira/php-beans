@@ -5,11 +5,11 @@ namespace PhpBeans\Factory;
 use Composer\Autoload\ClassLoader;
 use PhpBeans\Bean\BeanRegisterer;
 use PhpBeans\Container\Container;
-use PhpBeans\Event\EventDispatcher;
 use PhpBeans\Metadata\ClassMetadata;
 use PhpBeans\Scanner\ComponentScanner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\SimpleCache\CacheInterface;
+use Vox\Event\EventDispatcher;
 use Vox\Metadata\Cache\PsrSimpleCacheAdapter;
 use Vox\Metadata\Factory\MetadataFactoryFactory;
 
@@ -112,6 +112,9 @@ class ContainerBuilder
         if (!$this->debug) {
             $container->cacheUp();
         }
+
+        $container->set(get_class($factory), $factory);
+        $container->set(get_class($this->eventDispatcher), $this->eventDispatcher);
 
         return $container;
     }
