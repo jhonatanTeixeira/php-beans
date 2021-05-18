@@ -20,14 +20,14 @@ use Vox\Metadata\ParamMetadata;
 class Container implements ContainerInterface, ContainerWriterInterface, IteratorAggregate
 {
     private $beans = [];
-    
+
     /**
      * @var ClassMetadata[]
      */
     private array $metadatas = [];
-    
+
     private array $statuses = [];
-    
+
     /**
      * @var callable[]
      */
@@ -37,7 +37,7 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
      * @var MethodMetadata[]
      */
     private array $methodMetadatas = [];
-    
+
     private EventDispatcherInterface $eventDispatcher;
 
     private ?CacheInterface $cache;
@@ -45,11 +45,11 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     public bool $debug;
 
     private LoggerInterface $logger;
-    
+
     private const WAITING = 1;
     private const INSTANTIATING = 1;
     private const INSTANTIATED = 2;
-    
+
     public function __construct(EventDispatcherInterface $eventDispatcher, $debug = false,
                                 ?CacheInterface $cache = null) {
         $this->eventDispatcher = $eventDispatcher;
@@ -74,63 +74,76 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
             } else {
                 $this->beans[$id] = $this->newInstance($id);
             }
-            
+
             if ($this->beans[$id] instanceof ContainerAwareInterface) {
                 $this->beans[$id]->setContainer($this);
             }
         }
-        
+
         return $this->beans[$id];
     }
-    
+
     protected function newInstance(string $id) {
         $this->eventDispatcher->dispatch(new BeforeInstanceBeanEvent($this->getMetadata($id), $id));
-     
+
         $this->statuses[$id] = self::INSTANTIATING;
         $metadata = $this->metadatas[$id];
-        $constructorParams = $this->instantiateDependencies($metadata->getConstructorParams(), $id);
-        
+
+        try {
+            $constructorParams = $this->instantiateDependencies($metadata->getConstructorParams(), $id);
+        } catch (NotFoundContainerException $e) {
+            throw new ContainerException("Dependency for {$metadata->name} not found", 0, $e);
+        }
+
         $instance = $this->getMetadata($id)->getReflection()->newInstanceArgs($constructorParams);
         $this->statuses[$id] = self::INSTANTIATED;
         $this->eventDispatcher->dispatch(new AfterInstanceBeanEvent($instance, $id));
 
         $this->addToCache($id, $instance);
-        
+
         return $instance;
     }
-    
+
     protected function newInstanceFromFactory($id) {
         $this->statuses[$id] = self::INSTANTIATING;
 
         $factory = Closure::fromCallable($this->factories[$id]);
         $params = (new FunctionMetadata($factory))->params;
 
-        $deps = $this->instantiateDependencies($params, $id);
+        try {
+            $deps = $this->instantiateDependencies($params, $id);
+        } catch (NotFoundContainerException $e) {
+            throw new ContainerException("Dependency for {$id} not found", 0, $e);
+        }
 
         $instance = $factory(...$deps);
 
         $this->statuses[$id] = self::INSTANTIATED;
         $this->eventDispatcher->dispatch(new AfterInstanceBeanEvent($instance, $id));
-        
+
         return $instance;
     }
-    
+
     protected function newInstanceFromMethodMatadata($id) {
         $this->statuses[$id] = self::INSTANTIATING;
-        
+
         /* @var $factory MethodMetadata */
         $factory = $this->methodMetadatas[$id];
 
-        $deps = $this->instantiateDependencies($factory->params, $id);
+        try {
+            $deps = $this->instantiateDependencies($factory->params, $id);
+        } catch (NotFoundContainerException $e) {
+            throw new ContainerException("Dependency for {$factory->class}::{$factory->name} not found", 0, $e);
+        }
 
         $instance = $factory->invoke($this->get($factory->class), $deps);
 
         $this->statuses[$id] = self::INSTANTIATED;
         $this->eventDispatcher->dispatch(new AfterInstanceBeanEvent($instance, $id));
-        
+
         return $instance;
     }
-    
+
     /**
      * @param ParamMetadata[] $params
      * @param string $id
@@ -140,7 +153,7 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
 
         foreach ($params as $param) {
             $dependsOn = null;
-            
+
             if ($param->type && $this->has($param->type)) {
                 $dependsOn = $param->type;
             } elseif ($this->has($param->name)) {
@@ -148,31 +161,36 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
             } else {
                 throw new NotFoundContainerException($param->name, $param->type);
             }
-            
+
+            if ($this->hasBean($dependsOn)) {
+                $constructorParams[] = $this->beans[$dependsOn];
+                continue;
+            }
+
             if (!$this->isScalar($dependsOn) && $this->isInstantianting($dependsOn)) {
                 throw new CircularReferenceException($dependsOn, $id);
             }
-            
+
             $constructorParams[] = $this->isScalar($dependsOn)
                 ? $this->get($dependsOn)
                 : $this->newInstance($dependsOn);
         }
-        
+
         return $constructorParams;
     }
 
     public function isScalar(string $id) {
         return isset($this->beans[$id]) && is_scalar($this->beans[$id]);
     }
-    
+
     public function has($id): bool {
         return $this->hasCache($id)
             || isset($this->beans[$id])
-            || isset($this->metadatas[$id]) 
+            || isset($this->metadatas[$id])
             || isset($this->factories[$id])
             || isset($this->methodMetadatas[$id]);
     }
-    
+
     public function set(string $id, $value): Container {
         if ($value instanceof ClassMetadata) {
             $this->metadatas[$id] = $value;
@@ -183,42 +201,42 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
         } else {
             $this->beans[$id] = $value;
         }
-        
+
         return $this;
     }
-    
+
     public function hasMetadata(string $id) {
         return isset($this->metadatas[$id]);
     }
-    
+
     public function hasBean(string $id) {
         return isset($this->beans[$id]);
     }
-    
+
     public function hasFactory(string $id) {
         return isset($this->factories[$id]);
     }
-    
+
     private function isInstantianting(string $name) {
         return isset($this->statuses[$name]) && $this->statuses[$name] === self::INSTANTIATING;
     }
-    
+
     public function getMetadata(string $id): ClassMetadata {
         return $this->metadatas[$id];
     }
-    
+
     public function getBean(string $id) {
         return $this->beans[$id];
     }
-    
+
     public function getFactory(string $id): callable {
         return $this->factories[$id];
     }
-    
+
     public function __get($id) {
         return $this->get($id);
     }
-    
+
     public function __set($id, $value) {
         $this->set($id, $value);
     }
@@ -235,32 +253,32 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
             yield $id => $this->get($id);
         }
     }
-    
+
     /**
      * @param string $component
-     * 
+     *
      * @return ClassMetadata[]
      */
     public function getMetadataByComponent(string $component) {
         return array_filter(
-            $this->metadatas, 
-            fn(ClassMetadata $metadata) => $metadata->hasAnnotation($component) 
+            $this->metadatas,
+            fn(ClassMetadata $metadata) => $metadata->hasAnnotation($component)
                 || $metadata->isInstanceOf($component)
         );
     }
-    
+
     public function getBeansByComponent(string $component) {
         return array_map(
             fn(string $id) => $this->get($id),
             array_keys($this->getMetadataByComponent($component))
         );
     }
-    
+
     public function guessBeanName($bean) {
         if ($bean instanceof ClassMetadata) {
             return $bean->name;
         }
-        
+
         if ($bean instanceof MethodMetadata) {
             return $bean->class->name;
         }

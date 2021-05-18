@@ -54,6 +54,20 @@ class ContainerBuilder
         return $this;
     }
 
+    public function withAppNamespaces() {
+        $composer = json_decode(file_get_contents('composer.json'), true);
+
+        if (isset($composer['autoload']['psr-4'])) {
+            $this->namespaces = array_merge($this->namespaces, array_keys($composer['autoload']['psr-4']));
+        }
+
+        if (isset($composer['autoload']['psr-0'])) {
+            $this->namespaces = array_merge($this->namespaces, array_keys($composer['autoload']['psr-0']));
+        }
+
+        return $this;
+    }
+
     public function withNamespaces(string ...$namespaces) {
         $this->namespaces = [...$this->namespaces, ...$namespaces];
 
@@ -95,6 +109,9 @@ class ContainerBuilder
 
         $factory = $this->buildMetadataFactory();
 
+        $container->set(get_class($factory), $factory);
+        $container->set(get_class($this->eventDispatcher), $this->eventDispatcher);
+
         if (isset($this->cache)) {
             $factory->setCache(new PsrSimpleCacheAdapter($this->cache));
         }
@@ -113,8 +130,6 @@ class ContainerBuilder
             $container->cacheUp();
         }
 
-        $container->set(get_class($factory), $factory);
-        $container->set(get_class($this->eventDispatcher), $this->eventDispatcher);
 
         return $container;
     }

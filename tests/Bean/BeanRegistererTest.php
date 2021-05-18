@@ -22,7 +22,7 @@ class BeanRegistererTest extends TestCase
     public function testShouldRegisterBeans($withCache) {
         $builder = new ContainerBuilder();
 
-        $builder->withAllNamespaces()
+        $builder->withAppNamespaces()
             ->withBeans(['someValue' => 'lorem ipsum'])
             ->withStereotypes(TestImport::class)
         ;

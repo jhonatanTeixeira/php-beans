@@ -7,6 +7,7 @@ use Laminas\Code\Reflection\FileReflection;
 use Metadata\MetadataFactory;
 use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
 use Vox\Metadata\ClassMetadata;
 
 class ComponentScanner
@@ -110,10 +111,14 @@ class ComponentScanner
     }
 
     private function findFilesWindows(string $className, array $paths) {
-        return (new Finder())->in($paths)
-            ->contains(sprintf('/(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)/',
-                       $this->getShortClassName($className)))
-            ->getIterator();
+        $files = iterator_to_array(
+            (new Finder())->in($paths)
+                ->contains(sprintf('/(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)/',
+                           $this->getShortClassName($className)))
+                ->getIterator()
+        );
+
+        return array_map(fn(SplFileInfo $file) => $file->getPathname(), $files);
     }
 
     private function getShortClassName(string $className): string {
