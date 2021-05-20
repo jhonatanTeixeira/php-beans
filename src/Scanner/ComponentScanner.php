@@ -35,8 +35,8 @@ class ComponentScanner
             /* @var $loader \Composer\Autoload\ClassLoader */
             $loader = require 'vendor/autoload.php';
 
-            $paths = array_merge($paths, $loader->getPrefixes()[$namespace] ?? [],
-                                 $loader->getPrefixesPsr4()[$namespace] ?? []);
+            $paths = array_unique(array_merge($paths, $loader->getPrefixes()[$namespace] ?? [],
+                                              $loader->getPrefixesPsr4()[$namespace] ?? []));
         }
 
         /* @var $class ClassReflection */

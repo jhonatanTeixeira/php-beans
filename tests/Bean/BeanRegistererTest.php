@@ -23,6 +23,7 @@ class BeanRegistererTest extends TestCase
         $builder = new ContainerBuilder();
 
         $builder->withAppNamespaces()
+            ->withNamespaces('PhpBeansTest\\')
             ->withBeans(['someValue' => 'lorem ipsum'])
             ->withStereotypes(TestImport::class)
         ;

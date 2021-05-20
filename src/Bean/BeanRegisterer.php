@@ -26,8 +26,18 @@ class BeanRegisterer
     /**
      * @var string[]
      */
-    private array $componentClasses = [];
-    
+    private array $behaviors = [];
+
+    /**
+     * @var string[]
+     */
+    private array $components = [];
+
+    /**
+     * @var string[]
+     */
+    private array $factories = [];
+
     private ComponentScanner $componentScanner;
     
     private Container $container;
@@ -35,21 +45,23 @@ class BeanRegisterer
     private MetadataFactory $metadataFactory;
     
     public function __construct(ComponentScanner $componentScanner, Container $container,
-                                array $namespaces = [], array $componentClasses = [],
-                                MetadataFactory $metadataFactory) {
+                                array $namespaces = [], array $behaviors = [],
+                                MetadataFactory $metadataFactory, array $components = [], array $factories = []) {
         $this->componentScanner = $componentScanner;
         $this->container = $container;
         
         $this->namespaces = array_merge(['PhpBeans\\'], $namespaces);
-        $this->componentClasses = array_merge(
+        $this->behaviors = array_merge(
             [
                 Component::class,
                 Configuration::class,
                 PostBeanProcessor::class,
                 AbstractStereotypeProcessor::class,
             ],
-            $componentClasses
+            $behaviors
         );
+        $this->components = $components;
+        $this->factories = $factories;
 
         $this->metadataFactory = $metadataFactory;
     }
@@ -61,27 +73,35 @@ class BeanRegisterer
         return $this;
     }
     
-    public function addComponentClass(string $class) {
-        $this->componentClasses[] = $class;
+    public function addBehavior(string $class) {
+        $this->behaviors[] = $class;
 
         return $this;
     }
     
+    public function addComponent(string $class) {
+        $this->components[] = $class;
+
+        return $this;
+    }
+
     public function registerComponents() {
         $configurators = $this->componentScanner
             ->scanComponentsFor(BeanRegistererConfiguratorInterface::class, ...$this->namespaces);
 
-        /* @var $configurator BeanRegistererConfiguratorInterface */
+        /* @var $configurator ClassMetadata */
         foreach ($configurators as $configurator) {
-            $configurator->configure($this);
+            $configurator->reflection->newInstance()->configure($this);
         }
 
-        foreach ($this->componentClasses as $componentClass) {
+        foreach ($this->behaviors as $componentClass) {
             $namespaces = $this->namespaces;
-            
-            $components = $this->componentScanner
-                ->scanComponentsFor($componentClass, ...$namespaces);
 
+            $components = array_merge(
+                $this->componentScanner->scanComponentsFor($componentClass, ...$namespaces),
+                array_map(fn($class) => $this->metadataFactory->getMetadataForClass($class), $this->components)
+            );
+            
             foreach ($components as $metadata) {
                 $this->registerComponent($metadata);
                 /* @var $componentMetadata ClassMetadata */
@@ -105,6 +125,10 @@ class BeanRegisterer
                 $id = $factory->getAnnotation(Bean::class)->name ?? $type ?? $factory->name;
                 $this->container->set($id, $factory);
             }
+        }
+
+        foreach ($this->factories as $id => $factory) {
+            $this->container->setFactory($id, $factory);
         }
     }
     

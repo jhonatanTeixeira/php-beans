@@ -191,15 +191,25 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
             || isset($this->methodMetadatas[$id]);
     }
 
+    public function setBean(string $id, $bean) {
+        $this->beans[$id] = $bean;
+
+        return $this;
+    }
+
+    public function setFactory(string $id, callable $factory) {
+        $this->factories[$id] = $factory;
+
+        return $this;
+    }
+
     public function set(string $id, $value): Container {
         if ($value instanceof ClassMetadata) {
             $this->metadatas[$id] = $value;
         } elseif($value instanceof MethodMetadata) {
             $this->methodMetadatas[$id] = $value;
-        } elseif (is_callable($value)) {
-            $this->factories[$id] = $value;
         } else {
-            $this->beans[$id] = $value;
+            $this->setBean($id, $value);
         }
 
         return $this;

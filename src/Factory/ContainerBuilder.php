@@ -29,6 +29,10 @@ class ContainerBuilder
 
     private $beans = [];
 
+    private $components = [];
+
+    private $factories = [];
+
     private EventDispatcherInterface $eventDispatcher;
 
     private ?string $withYamlMetadata = null;
@@ -82,20 +86,36 @@ class ContainerBuilder
 
     public function withYamlMetadata(string $metadataPath) {
         $this->withYamlMetadata = $metadataPath;
+
+        return $this;
     }
 
     public function withBeans(array $beans) {
-        $this->beans = $beans;
+        $this->beans = array_merge($this->beans, $beans);
 
         return $this;
     }
 
     public function withEventDispatcher(EventDispatcherInterface $eventDispatcher) {
         $this->eventDispatcher = $eventDispatcher;
+
+        return $this;
     }
 
     public function withCache(CacheInterface $cache) {
         $this->cache = $cache;
+
+        return $this;
+    }
+
+    public function withComponents(string ...$components) {
+        $this->components = array_merge($this->components, $components);
+
+        return $this;
+    }
+
+    public function withFactories(array $factories) {
+        $this->factories = array_merge($this->factories, $factories);
 
         return $this;
     }
@@ -122,6 +142,8 @@ class ContainerBuilder
             $this->namespaces,
             $this->stereotypes,
             $factory,
+            $this->components,
+            $this->factories,
         );
 
         $registerer->registerBeans();
