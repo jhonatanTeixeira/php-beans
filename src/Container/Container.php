@@ -158,6 +158,8 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
                 $dependsOn = $param->type;
             } elseif ($this->has($param->name)) {
                 $dependsOn = $param->name;
+            } elseif ($param->reflection->isOptional()) {
+                continue;
             } else {
                 throw new NotFoundContainerException($param->name, $param->type);
             }
@@ -171,9 +173,7 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
                 throw new CircularReferenceException($dependsOn, $id);
             }
 
-            $constructorParams[] = $this->isScalar($dependsOn)
-                ? $this->get($dependsOn)
-                : $this->newInstance($dependsOn);
+            $constructorParams[] = $this->get($dependsOn);
         }
 
         return $constructorParams;
