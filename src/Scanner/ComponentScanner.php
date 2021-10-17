@@ -3,8 +3,8 @@
 namespace PhpBeans\Scanner;
 
 use Laminas\Code\Reflection\ClassReflection;
-use Laminas\Code\Reflection\FileReflection;
 use Metadata\MetadataFactory;
+use PhpBeans\Metadata\FileReflection;
 use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
@@ -42,7 +42,7 @@ class ComponentScanner
         /* @var $class ClassReflection */
         foreach($this->getFiles($className, $paths) as $class) {
             $metadata = $this->metadataFactory->getMetadataForClass($class->getName());
-            $metadata->fileResources[] = $class->getDeclaringFile();
+            $metadata->fileResources[] = $class->getFileName();
 
             if ($metadata->hasAnnotation($className) || $this->implementsInterface($class, $className)
                 || $class->isSubclassOf($className)) {
@@ -65,7 +65,7 @@ class ComponentScanner
 
         foreach ($files as $file) {
             try {
-                yield from (new FileReflection($file, true))->getClasses();
+                yield from (new FileReflection($file))->getClasses();
             } catch (\Throwable $e) {
                 yield from [];
             }
