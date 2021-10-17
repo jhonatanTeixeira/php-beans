@@ -93,7 +93,7 @@ class ComponentScanner
     }
 
     private function findFilesLinux(string $className, array $paths) {
-        $command = trim(sprintf('grep -rP "(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)" %2$s',
+        $command = trim(sprintf('grep -rP "(\@|\#\[|extends\s+|implements\s+)([^\S]+%1$s|%1$s)" %2$s',
                                 $this->getShortClassName($className),
                                 implode(" ", $paths)));
 
