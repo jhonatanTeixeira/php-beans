@@ -135,9 +135,12 @@ class ContainerBuilder
         if (isset($this->cache)) {
             $factory->setCache(new PsrSimpleCacheAdapter($this->cache));
         }
-
+        
+        $componentScanner = new ComponentScanner($factory, $this->debug, $this->cache);
+        $container->set(get_class($componentScanner), $componentScanner);
+        
         $registerer = new BeanRegisterer(
-            new ComponentScanner($factory, $this->debug, $this->cache),
+            $componentScanner,
             $container,
             $this->namespaces,
             $this->stereotypes,
@@ -151,7 +154,6 @@ class ContainerBuilder
         if (!$this->debug) {
             $container->cacheUp();
         }
-
 
         return $container;
     }

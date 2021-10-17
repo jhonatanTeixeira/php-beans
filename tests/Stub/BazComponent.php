@@ -7,9 +7,7 @@ use PhpBeans\Annotation\Autowired;
 use PhpBeans\Annotation\Component;
 use PhpBeans\Annotation\Value;
 
-/**
- * @Component
- */
+#[Component]
 class BazComponent
 {
     /**

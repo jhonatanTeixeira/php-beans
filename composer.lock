@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4a67cf5c0404890b19048dedc213b97c",
+    "content-hash": "bba5cfd2c18c51e5a4414abe90c73acd",
     "packages": [
         {
             "name": "doctrine/annotations",
@@ -575,20 +575,20 @@
         },
         {
             "name": "psr/cache",
-            "version": "2.0.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-fig/cache.git",
-                "reference": "213f9dbc5b9bfbc4f8db86d2838dc968752ce13b"
+                "reference": "d11b50ad223250cf17b86e38383413f5a6764bf8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-fig/cache/zipball/213f9dbc5b9bfbc4f8db86d2838dc968752ce13b",
-                "reference": "213f9dbc5b9bfbc4f8db86d2838dc968752ce13b",
+                "url": "https://api.github.com/repos/php-fig/cache/zipball/d11b50ad223250cf17b86e38383413f5a6764bf8",
+                "reference": "d11b50ad223250cf17b86e38383413f5a6764bf8",
                 "shasum": ""
             },
             "require": {
-                "php": ">=8.0.0"
+                "php": ">=5.3.0"
             },
             "type": "library",
             "extra": {
@@ -608,7 +608,7 @@
             "authors": [
                 {
                     "name": "PHP-FIG",
-                    "homepage": "https://www.php-fig.org/"
+                    "homepage": "http://www.php-fig.org/"
                 }
             ],
             "description": "Common interface for caching libraries",
@@ -618,9 +618,9 @@
                 "psr-6"
             ],
             "support": {
-                "source": "https://github.com/php-fig/cache/tree/2.0.0"
+                "source": "https://github.com/php-fig/cache/tree/master"
             },
-            "time": "2021-02-03T23:23:37+00:00"
+            "time": "2016-08-06T20:24:11+00:00"
         },
         {
             "name": "psr/container",
@@ -1725,16 +1725,16 @@
         },
         {
             "name": "vox/metadata",
-            "version": "0.6.6",
+            "version": "1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jhonatanTeixeira/metadata.git",
-                "reference": "eeefe5fbf4f1ce0a1be793e31e8ad77bfb430647"
+                "reference": "4d1e8b4e3c7164c98b7630b21b31c434fb8668b0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/jhonatanTeixeira/metadata/zipball/eeefe5fbf4f1ce0a1be793e31e8ad77bfb430647",
-                "reference": "eeefe5fbf4f1ce0a1be793e31e8ad77bfb430647",
+                "url": "https://api.github.com/repos/jhonatanTeixeira/metadata/zipball/4d1e8b4e3c7164c98b7630b21b31c434fb8668b0",
+                "reference": "4d1e8b4e3c7164c98b7630b21b31c434fb8668b0",
                 "shasum": ""
             },
             "require": {
@@ -1742,16 +1742,12 @@
                 "jms/metadata": "^1",
                 "ocramius/proxy-manager": "^2",
                 "php": ">=7.4",
+                "psr/cache": "^1",
                 "psr/simple-cache": "^1.0",
                 "symfony/yaml": "^3"
             },
             "require-dev": {
-                "mayflower/php-codebrowser": "^2",
-                "phing/phing": "^2",
-                "phpmd/phpmd": "^2",
-                "phpunit/phpunit": "^8",
-                "sebastian/phpcpd": "^5",
-                "squizlabs/php_codesniffer": "^2"
+                "phpunit/phpunit": "^9.4"
             },
             "type": "library",
             "autoload": {
@@ -1765,9 +1761,9 @@
             ],
             "support": {
                 "issues": "https://github.com/jhonatanTeixeira/metadata/issues",
-                "source": "https://github.com/jhonatanTeixeira/metadata/tree/0.6.6"
+                "source": "https://github.com/jhonatanTeixeira/metadata/tree/1.0.0"
             },
-            "time": "2021-06-04T02:40:09+00:00"
+            "time": "2021-10-12T02:56:04+00:00"
         },
         {
             "name": "webimpress/safe-writer",

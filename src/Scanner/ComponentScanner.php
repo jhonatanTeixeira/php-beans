@@ -113,7 +113,7 @@ class ComponentScanner
     private function findFilesWindows(string $className, array $paths) {
         $files = iterator_to_array(
             (new Finder())->in($paths)
-                ->contains(sprintf('/(\@|extends\s+|implements\s+)([^\S]+%1$s|%1$s)/',
+                ->contains(sprintf('/(\@|\#\[|extends\s+|implements\s+)([^\S]+%1$s|%1$s)/',
                            $this->getShortClassName($className)))
                 ->getIterator()
         );
