@@ -142,9 +142,9 @@ class ContainerBuilder
         $registerer = new BeanRegisterer(
             $componentScanner,
             $container,
+            $factory,
             $this->namespaces,
             $this->stereotypes,
-            $factory,
             $this->components,
             $this->factories,
         );

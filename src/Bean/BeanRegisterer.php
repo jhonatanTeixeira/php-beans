@@ -45,8 +45,9 @@ class BeanRegisterer
     private MetadataFactory $metadataFactory;
     
     public function __construct(ComponentScanner $componentScanner, Container $container,
+                                MetadataFactory $metadataFactory,
                                 array $namespaces = [], array $behaviors = [],
-                                MetadataFactory $metadataFactory, array $components = [], array $factories = []) {
+                                array $components = [], array $factories = []) {
         $this->componentScanner = $componentScanner;
         $this->container = $container;
         

@@ -27,7 +27,7 @@ class PostBeanStereotypeProcessor extends AbstractStereotypeProcessor
         }
 
         /* @var $class ReflectionClass */
-        $class = $params[0]->getClass();
+        $class = new ReflectionClass($params[0]->getType()->getName());
         $name = $params[0]->name;
 
         if ($class && $class->isInstance($this->getContainer())) {
