@@ -16,11 +16,15 @@ abstract class AbstractStereotypeProcessor implements ContainerAwareInterface
     public function getContainer(): Container {
         return $this->container;
     }
+
+    protected function fetchStereotypes() {
+        return $this->container->getBeansByComponent($this->getStereotypeName());
+    }
     
     abstract public function getStereotypeName(): string;
     
     public function findAndProcess() {
-        foreach ($this->container->getBeansByComponent($this->getStereotypeName()) as $stereotype) {
+        foreach ($this->fetchStereotypes() as $stereotype) {
             $this->process($stereotype);
         }
     }

@@ -23,7 +23,11 @@ class FileReflection
 
     public function getClasses() {
         $matches = [];
-        preg_match_all('/(?<!\S)class\s+(?P<class>\S+)[\s\S]+?(?={)/mi', $this->contents, $matches);
+        preg_match_all(
+            '/(?<!\S)((class)|(interface))\s+(?P<class>\S+)[\s\S]+?(?={)/mi',
+            $this->contents,
+            $matches
+        );
 
         $namespace = $this->getNamespace();
 
