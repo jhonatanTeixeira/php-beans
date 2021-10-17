@@ -4,6 +4,7 @@ namespace PhpBeans\Container;
 
 use Closure;
 use IteratorAggregate;
+use PhpBeans\Annotation\Injects;
 use PhpBeans\Event\AfterInstanceBeanEvent;
 use PhpBeans\Event\BeforeInstanceBeanEvent;
 use PhpBeans\Metadata\ClassMetadata;
@@ -144,6 +145,12 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
         return $instance;
     }
 
+    private function getInjects(\ReflectionParameter $param) {
+        $injects = $param->getAttributes(Injects::class);
+
+        return $injects ? $injects[0]->beanId : null;
+    }
+
     /**
      * @param ParamMetadata[] $params
      * @param string $id
@@ -158,6 +165,8 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
                 $dependsOn = $param->type;
             } elseif ($this->has($param->name)) {
                 $dependsOn = $param->name;
+            } elseif ($beanId = $this->getInjects($param->reflection)) {
+                $dependsOn = $beanId;
             } elseif ($param->reflection->isOptional()) {
                 continue;
             } else {

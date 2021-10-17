@@ -58,6 +58,11 @@ class BeanRegistererTest extends TestCase
             $container->get(BazComponent::class)->someValue
         );
 
+        $this->assertEquals(
+            'some name',
+            $container->get(BazComponent::class)->getSomeComponent()->getSomeName()
+        );
+
         $this->assertInstanceOf(FooComponent::class, $container->get(BazComponent::class)->getFooComponent());
         $this->assertInstanceOf(TestImportService::class, $container->get(TestImportService::class));
         $this->assertEquals("lorem ipsum", $container->get(TestImportService::class)->value);
