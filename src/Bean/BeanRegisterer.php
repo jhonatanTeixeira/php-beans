@@ -104,7 +104,7 @@ class BeanRegisterer
             );
             
             foreach ($components as $metadata) {
-                $this->registerComponent($metadata);
+                $this->registerComponent($metadata, $componentClass);
                 /* @var $componentMetadata ClassMetadata */
                 $componentMetadata = $this->metadataFactory->getMetadataForClass($componentClass);
 
@@ -133,8 +133,18 @@ class BeanRegisterer
         }
     }
     
-    public function registerComponent(ClassMetadata $metadata) {
-        $this->container->set($metadata->name, $metadata);
+    public function registerComponent(ClassMetadata $metadata, string $componentClass = null) {
+        $beanId = $metadata->name;
+
+        if ($componentClass && $metadata->hasAnnotation($componentClass)) {
+            $behavior = $metadata->getAnnotation($componentClass);
+
+            if (property_exists($behavior, 'name')) {
+                $beanId = $behavior->name ?? $metadata->name;
+            }
+        }
+
+        $this->container->set($beanId, $metadata);
 
         return $this;
     }

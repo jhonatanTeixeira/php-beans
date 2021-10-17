@@ -148,7 +148,7 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     private function getInjects(\ReflectionParameter $param) {
         $injects = $param->getAttributes(Injects::class);
 
-        return $injects ? $injects[0]->beanId : null;
+        return $injects ? $injects[0]->newInstance()->beanId : null;
     }
 
     /**
