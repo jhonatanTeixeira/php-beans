@@ -1,9 +1,9 @@
 <?php
 
 
-namespace PhpBeansTest\Annotation;
+namespace Shared\Annotation;
 
-use PhpBeansTest\Config\TestImportConfig;
+use ScannedTest\Config\TestImportConfig;
 use PhpBeans\Annotation\Imports;
 
 

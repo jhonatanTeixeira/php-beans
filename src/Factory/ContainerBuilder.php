@@ -9,6 +9,7 @@ use PhpBeans\Metadata\ClassMetadata;
 use PhpBeans\Scanner\ComponentScanner;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\SimpleCache\CacheInterface;
+use Symfony\Component\Yaml\Yaml;
 use Vox\Event\EventDispatcher;
 use Vox\Metadata\Cache\PsrSimpleCacheAdapter;
 use Vox\Metadata\Factory\MetadataFactoryFactory;
@@ -41,11 +42,25 @@ class ContainerBuilder
 
     private bool $debug;
 
+    private ?array $configFile = null;
+
+    private bool $withComponentScanner = true;
+
     public function __construct($debug = false)
     {
         $this->loader = require 'vendor/autoload.php';
         $this->eventDispatcher = new EventDispatcher();
         $this->debug = $debug;
+    }
+
+    /**
+     * @param bool $withComponentScanner
+     * @return ContainerBuilder
+     */
+    public function withComponentScanner(bool $withComponentScanner): ContainerBuilder {
+        $this->withComponentScanner = $withComponentScanner;
+
+        return $this;
     }
 
     public function withAllNamespaces()
@@ -120,8 +135,20 @@ class ContainerBuilder
         return $this;
     }
 
+    public function withConfigFile(string $configFile) {
+        $this->configFile = Yaml::parseFile($configFile);
+
+        return $this;
+    }
+
     public function build(): Container {
         $container = new Container($this->eventDispatcher, $this->debug, $this->cache);
+
+        if ($this->configFile) {
+            foreach ($this->configFile as $id => $config) {
+                $container->set($id, $config);
+            }
+        }
 
         foreach ($this->beans as $id => $value) {
             $container->set($id, $value);
@@ -135,14 +162,18 @@ class ContainerBuilder
         if (isset($this->cache)) {
             $factory->setCache(new PsrSimpleCacheAdapter($this->cache));
         }
-        
-        $componentScanner = new ComponentScanner($factory, $this->debug, $this->cache);
-        $container->set(get_class($componentScanner), $componentScanner);
+
+        $componentScanner = null;
+
+        if ($this->withComponentScanner) {
+            $componentScanner = new ComponentScanner($factory, $this->debug, $this->cache);
+            $container->set(get_class($componentScanner), $componentScanner);
+        }
         
         $registerer = new BeanRegisterer(
-            $componentScanner,
             $container,
             $factory,
+            $componentScanner,
             $this->namespaces,
             $this->stereotypes,
             $this->components,

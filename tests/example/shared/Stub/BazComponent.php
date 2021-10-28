@@ -1,7 +1,7 @@
 <?php
 
 
-namespace PhpBeansTest\Stub;
+namespace Shared\Stub;
 
 use PhpBeans\Annotation\Autowired;
 use PhpBeans\Annotation\Component;

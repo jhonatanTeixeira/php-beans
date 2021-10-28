@@ -23,6 +23,7 @@ trait ValueProcessorTrait
             $property->setValue($bean, $value);
         } catch (\Throwable $e) {
             $this->logger->debug("cannot process value {$valueId}: {$e->getMessage()}");
+            $property->setValue($bean, $annotation->defaultValue);
         }
     }
 }

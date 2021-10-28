@@ -1,7 +1,7 @@
 <?php
 
 
-namespace PhpBeansTest\Factory;
+namespace ScannedTest\Factory;
 
 
 interface SomeTestBehavior

@@ -2,6 +2,8 @@
 
 namespace PhpBeans\Annotation;
 
+use Doctrine\Common\Annotations\Annotation\Required;
+
 /**
  * @Annotation
  * @Target({"PROPERTY"})
@@ -12,11 +14,18 @@ class Value
 {
     /**
      * @var string
+     * @Required()
      */
     public $beanId;
 
-    public function __construct(string $beanId = null)
+    /**
+     * @var string
+     */
+    public $defaultValue;
+
+    public function __construct(string $beanId, string $defaultValue = null)
     {
         $this->beanId = $beanId;
+        $this->defaultValue = $defaultValue;
     }
 }

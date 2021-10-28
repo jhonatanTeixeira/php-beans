@@ -4,6 +4,9 @@ namespace PhpBeans\Container;
 
 use Closure;
 use IteratorAggregate;
+use Metadata\MetadataFactory;
+use PhpBeans\Annotation\Configuration;
+use PhpBeans\Annotation\Imports;
 use PhpBeans\Annotation\Injects;
 use PhpBeans\Event\AfterInstanceBeanEvent;
 use PhpBeans\Event\BeforeInstanceBeanEvent;
@@ -47,6 +50,11 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
 
     private LoggerInterface $logger;
 
+    /**
+     * @var ClassMetadata[]
+     */
+    private array $interfaces = [];
+
     private const WAITING = 1;
     private const INSTANTIATING = 1;
     private const INSTANTIATED = 2;
@@ -61,6 +69,10 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     }
 
     public function get($id) {
+        if ($this->isPath($id)) {
+            return $this->parsePath($id);
+        }
+
         if (!$this->has($id)) {
             throw new NotFoundContainerException($id);
         }
@@ -146,9 +158,42 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     }
 
     private function getInjects(\ReflectionParameter $param) {
-        $injects = $param->getAttributes(Injects::class);
+        $injects = $param->getAttributes(Injects::class)[0] ?? null;
 
-        return $injects ? $injects[0]->newInstance()->beanId : null;
+        return $injects?->newInstance()->beanId;
+    }
+
+    private function isPath(string $path): bool {
+        return (bool) strpos($path, '.');
+    }
+
+    private function parsePath(string $path, $currentData = null) {
+        $props = explode('.', $path);
+        $prop = array_shift($props);
+
+        if (!$currentData) {
+            $currentData = $this->get($prop);
+
+            if (empty($props)) {
+                return $currentData;
+            }
+
+            $prop = array_shift($props);
+        }
+
+        if (is_array($currentData)) {
+            $currentData = $currentData[$prop];
+        }
+
+        if (is_object($currentData)) {
+            $currentData = $currentData->$prop;
+        }
+
+        if (empty($props)) {
+            return $currentData;
+        }
+
+        return $this->parsePath(implode('.', $props), $currentData);
     }
 
     /**
@@ -213,13 +258,43 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     }
 
     public function set(string $id, $value): Container {
-        if ($value instanceof ClassMetadata) {
-            $this->metadatas[$id] = $value;
+        if ($value instanceof ClassMetadata && $value->getReflection()->isInterface()) {
+            $this->interfaces[$id] = $value;
+        } elseif ($value instanceof ClassMetadata) {
+//            $this->metadatas[$id] = $value;
+//            $this->registerMetadata($id, $value);
+            $this->setComponent($id, $value);
         } elseif($value instanceof MethodMetadata) {
             $this->methodMetadatas[$id] = $value;
         } else {
             $this->setBean($id, $value);
         }
+
+        return $this;
+    }
+
+    public function getMetadataFactory(): MetadataFactory {
+        return $this->get(MetadataFactory::class);
+    }
+
+    public function setComponent($id, ClassMetadata $metadata, array $components = []): Container {
+        if (empty($components)) {
+            $components = $metadata->getAnnotations();
+        }
+
+        foreach ($components as $component) {
+            $componentMetadata = $this->getMetadataFactory()->getMetadataForClass(get_class($component));
+
+            if ($componentMetadata->hasAnnotation(Imports::class)) {
+                foreach ($componentMetadata->getAnnotation(Imports::class)->configurations as $configuration) {
+                    $configMetadata = $this->get(MetadataFactory::class)->getMetadataForClass($configuration);
+                    $configMetadata->annotations[Configuration::class] = new Configuration();
+                    $this->set($configMetadata->name, $configMetadata);
+                }
+            }
+        }
+
+        $this->metadatas[$id] = $metadata;
 
         return $this;
     }
@@ -250,6 +325,14 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
 
     public function getFactory(string $id): callable {
         return $this->factories[$id];
+    }
+
+    /**
+     * @return ClassMetadata[]
+     */
+    public function getInterfaces(): array
+    {
+        return $this->interfaces;
     }
 
     public function __get($id) {

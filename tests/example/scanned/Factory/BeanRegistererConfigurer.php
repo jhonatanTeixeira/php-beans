@@ -1,7 +1,7 @@
 <?php
 
 
-namespace PhpBeansTest\Factory;
+namespace ScannedTest\Factory;
 
 
 use PhpBeans\Bean\BeanRegisterer;
@@ -11,9 +11,9 @@ class BeanRegistererConfigurer implements BeanRegistererConfiguratorInterface
 {
     public function configure(BeanRegisterer $beanRegisterer)
     {
-        $beanRegisterer->addNamespace('PhpBeansTest\\')
+        $beanRegisterer->addNamespace('ScannedTest\\')
             ->addComponent(SomeRegisteredTestComponent::class)
-            ->addBehavior(SomeTestBehavior::class)
+            ->addStereotype(SomeTestBehavior::class)
         ;
     }
 }

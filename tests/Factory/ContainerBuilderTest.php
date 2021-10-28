@@ -3,9 +3,10 @@
 
 namespace PhpBeansTest\Factory;
 
-
-use Monolog\Test\TestCase;
 use PhpBeans\Factory\ContainerBuilder;
+use PHPUnit\Framework\TestCase;
+use ScannedTest\Factory\SomeRegisteredTestComponent;
+use ScannedTest\Factory\SomeTestBehaviorImplementation;
 
 class ContainerBuilderTest extends TestCase
 {
@@ -13,7 +14,8 @@ class ContainerBuilderTest extends TestCase
         $cb = new ContainerBuilder();
 
         $cb->withAppNamespaces()
-            ->withNamespaces('PhpBeansTest\\')
+            ->withNamespaces('ScannedTest\\')
+            ->withNamespaces('Shared\\')
             ->withBeans(['someValue' => 'lorem ipsum'])
             ->withComponents(SomeTestComponent::class, SomeInjectedComponent::class)
             ->withBeans([
@@ -22,6 +24,7 @@ class ContainerBuilderTest extends TestCase
             ->withFactories([
                 'factoryTest' => fn(SomeTestComponent $someTestComponent) => new SomeInjectedComponent($someTestComponent),
             ])
+            ->withConfigFile('tests/example/shared/configs/application.yaml')
         ;
 
         $container = $cb->build();

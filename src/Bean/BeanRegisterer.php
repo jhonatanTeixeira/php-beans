@@ -26,7 +26,7 @@ class BeanRegisterer
     /**
      * @var string[]
      */
-    private array $behaviors = [];
+    private array $stereotypes = [];
 
     /**
      * @var string[]
@@ -38,28 +38,35 @@ class BeanRegisterer
      */
     private array $factories = [];
 
+    /**
+     * @var string[]
+     */
+    private array $configurators = [];
+
     private ComponentScanner $componentScanner;
     
     private Container $container;
 
     private MetadataFactory $metadataFactory;
     
-    public function __construct(ComponentScanner $componentScanner, Container $container,
-                                MetadataFactory $metadataFactory,
-                                array $namespaces = [], array $behaviors = [],
-                                array $components = [], array $factories = []) {
+    public function __construct(Container        $container,
+                                MetadataFactory  $metadataFactory,
+                                ComponentScanner $componentScanner = null,
+                                array            $namespaces = [], array $stereotypes = [],
+                                array            $components = [], array $factories = []) {
         $this->componentScanner = $componentScanner;
         $this->container = $container;
         
         $this->namespaces = array_merge(['PhpBeans\\'], $namespaces);
-        $this->behaviors = array_merge(
+        $this->stereotypes = array_merge(
             [
                 Component::class,
                 Configuration::class,
                 PostBeanProcessor::class,
                 AbstractStereotypeProcessor::class,
+                AbstractInterfaceImplementor::class,
             ],
-            $behaviors
+            $stereotypes
         );
         $this->components = $components;
         $this->factories = $factories;
@@ -74,8 +81,8 @@ class BeanRegisterer
         return $this;
     }
     
-    public function addBehavior(string $class) {
-        $this->behaviors[] = $class;
+    public function addStereotype(string $class) {
+        $this->stereotypes[] = $class;
 
         return $this;
     }
@@ -86,35 +93,55 @@ class BeanRegisterer
         return $this;
     }
 
+    public function addConfigurator(string $configurator): BeanRegisterer {
+        $this->configurators[] = $configurator;
+
+        return $this;
+    }
+
+    public function getAllComponentsMetadata() {
+        return array_map(fn($class) => $this->metadataFactory->getMetadataForClass($class), $this->components);
+    }
+
+    public function getAllConfigurators() {
+        $configurators = array_map(fn($c) => $this->metadataFactory->getMetadataForClass($c), $this->configurators);
+
+        if ($this->componentScanner) {
+            $configurators = array_merge($configurators, $this->componentScanner
+                ->scanComponentsFor(BeanRegistererConfiguratorInterface::class, ...$this->namespaces));
+        }
+
+        return array_map(fn($c) => $c->reflection->newInstance(), $configurators);
+    }
+
+    public function registerClassComponents(ClassMetadata $classMetadata) {
+        foreach ($classMetadata->getAnnotations() as $stereotype) {
+            $this->registerComponent($classMetadata, $stereotype);
+        }
+    }
+
     public function registerComponents() {
-        $configurators = $this->componentScanner
-            ->scanComponentsFor(BeanRegistererConfiguratorInterface::class, ...$this->namespaces);
+        $configurators = $this->getAllConfigurators();
 
         /* @var $configurator ClassMetadata */
         foreach ($configurators as $configurator) {
-            $configurator->reflection->newInstance()->configure($this);
+            $configurator->configure($this);
         }
 
-        foreach ($this->behaviors as $componentClass) {
+        if (!$this->componentScanner) {
+            array_walk($this->components, [$this, 'registerClassComponents']);
+        }
+
+        foreach ($this->stereotypes as $stereotypeClass) {
             $namespaces = $this->namespaces;
 
             $components = array_merge(
-                $this->componentScanner->scanComponentsFor($componentClass, ...$namespaces),
-                array_map(fn($class) => $this->metadataFactory->getMetadataForClass($class), $this->components)
+                $this->componentScanner->scanComponentsFor($stereotypeClass, ...$namespaces),
+                $this->getAllComponentsMetadata(),
             );
             
             foreach ($components as $metadata) {
-                $this->registerComponent($metadata, $componentClass);
-                /* @var $componentMetadata ClassMetadata */
-                $componentMetadata = $this->metadataFactory->getMetadataForClass($componentClass);
-
-                if ($componentMetadata->hasAnnotation(Imports::class)) {
-                    foreach ($componentMetadata->getAnnotation(Imports::class)->configurations as $configuration) {
-                        $configMetadata = $this->metadataFactory->getMetadataForClass($configuration);
-                        $configMetadata->annotations[Configuration::class] = new Configuration();
-                        $this->registerComponent($configMetadata);
-                    }
-                }
+                $this->registerComponent($metadata, $stereotypeClass);
             }
         }
     }
@@ -133,14 +160,14 @@ class BeanRegisterer
         }
     }
     
-    public function registerComponent(ClassMetadata $metadata, string $componentClass = null) {
+    public function registerComponent(ClassMetadata $metadata, string $stereotypeClass = null) {
         $beanId = $metadata->name;
 
-        if ($componentClass && $metadata->hasAnnotation($componentClass)) {
-            $behavior = $metadata->getAnnotation($componentClass);
+        if ($stereotypeClass && $metadata->hasAnnotation($stereotypeClass)) {
+            $component = $metadata->getAnnotation($stereotypeClass);
 
-            if (property_exists($behavior, 'name')) {
-                $beanId = $behavior->name ?? $metadata->name;
+            if (property_exists($component, 'name')) {
+                $beanId = $component->name ?? $metadata->name;
             }
         }
 
@@ -163,7 +190,21 @@ class BeanRegisterer
         $this->registerComponents();
         $this->resolveConfigurationValues();
         $this->registerFactories();
-        
+
+        $interfaceImplementors = $this->container
+            ->getBeansByComponent(AbstractInterfaceImplementor::class);
+
+        foreach ($this->container->getInterfaces() as $interface) {
+            /* @var $interfaceImplementor AbstractInterfaceImplementor */
+            foreach ($interfaceImplementors as $interfaceImplementor) {
+                if (!$interfaceImplementor->accept($interface)) {
+                    continue;
+                }
+
+                $interfaceImplementor->implementsClass($interface);
+            }
+        }
+
         /* @var $processor AbstractStereotypeProcessor */
         foreach ($this->container->getBeansByComponent(AbstractStereotypeProcessor::class) as $processor) {
             $processor->findAndProcess();

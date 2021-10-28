@@ -1,16 +1,16 @@
 <?php
 
 
-namespace PhpBeansTest\Bean;
+namespace ScannedTest\Bean;
 
 
 use PhpBeans\Factory\ContainerBuilder;
-use PhpBeansTest\Annotation\TestImport;
-use PhpBeansTest\Stub\BarComponent;
-use PhpBeansTest\Stub\BazComponent;
-use PhpBeansTest\Stub\BeanComponent;
-use PhpBeansTest\Stub\FooComponent;
-use PhpBeansTest\Stub\TestImportService;
+use Shared\Annotation\TestImport;
+use Shared\Stub\BarComponent;
+use Shared\Stub\BazComponent;
+use Shared\Stub\BeanComponent;
+use Shared\Stub\FooComponent;
+use Shared\Stub\TestImportService;
 use PHPUnit\Framework\TestCase;
 use Vox\Cache\Factory;
 
@@ -23,9 +23,11 @@ class BeanRegistererTest extends TestCase
         $builder = new ContainerBuilder();
 
         $builder->withAppNamespaces()
-            ->withNamespaces('PhpBeansTest\\')
+            ->withNamespaces('ScannedTest\\')
+            ->withNamespaces('Shared\\')
             ->withBeans(['someValue' => 'lorem ipsum'])
             ->withStereotypes(TestImport::class)
+            ->withConfigFile('tests/example/shared/configs/application.yaml')
         ;
 
         if ($withCache) {
@@ -37,16 +39,18 @@ class BeanRegistererTest extends TestCase
 
         $container = $builder->build();
 
-        /* @var $foo \PhpBeansTest\Stub\FooComponent */
+        /* @var $foo \ScannedTest\Stub\FooComponent */
         $foo = $container->get(FooComponent::class);
 
         $this->assertInstanceOf(FooComponent::class, $foo);
         $this->assertEquals('lorem ipsum', $foo->getSomeValue());
 
-        /* @var $bar \PhpBeansTest\Stub\BarComponent */
+        /* @var $bar \ScannedTest\Stub\BarComponent */
         $bar = $container->get(BarComponent::class);
 
         $this->assertEquals('lorem ipsum', $bar->getFooComponent()->getSomeValue());
+        $this->assertEquals('default', $bar->getDefaultValue());
+        $this->assertEquals(10, $bar->getValue());
 
         $this->assertEquals(
             'lorem ipsum',

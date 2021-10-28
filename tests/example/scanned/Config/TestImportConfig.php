@@ -1,9 +1,9 @@
 <?php
 
-namespace PhpBeansTest\Config;
+namespace ScannedTest\Config;
 
 use PhpBeans\Annotation\Value;
-use PhpBeansTest\Stub\TestImportService;
+use Shared\Stub\TestImportService;
 use PhpBeans\Annotation\Bean;
 
 class TestImportConfig

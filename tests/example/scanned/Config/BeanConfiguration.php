@@ -1,13 +1,13 @@
 <?php
 
 
-namespace PhpBeansTest\Config;
+namespace ScannedTest\Config;
 
 use PhpBeans\Annotation\Bean;
 use PhpBeans\Annotation\Configuration;
-use PhpBeansTest\Annotation\TestImport;
-use PhpBeansTest\Stub\BarComponent;
-use PhpBeansTest\Stub\BeanComponent;
+use Shared\Annotation\TestImport;
+use Shared\Stub\BarComponent;
+use Shared\Stub\BeanComponent;
 
 /**
  * @Configuration
