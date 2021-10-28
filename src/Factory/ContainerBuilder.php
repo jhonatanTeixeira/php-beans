@@ -44,7 +44,7 @@ class ContainerBuilder
 
     private ?array $configFile = null;
 
-    private bool $withComponentScanner = true;
+    private ?string $withComponentScanner = ComponentScanner::class;
 
     public function __construct($debug = false)
     {
@@ -53,12 +53,14 @@ class ContainerBuilder
         $this->debug = $debug;
     }
 
-    /**
-     * @param bool $withComponentScanner
-     * @return ContainerBuilder
-     */
-    public function withComponentScanner(bool $withComponentScanner): ContainerBuilder {
+    public function withComponentScanner(?string $withComponentScanner): ContainerBuilder {
         $this->withComponentScanner = $withComponentScanner;
+
+        return $this;
+    }
+
+    public function disableComponentScanner(): ContainerBuilder {
+        $this->withComponentScanner = null;
 
         return $this;
     }

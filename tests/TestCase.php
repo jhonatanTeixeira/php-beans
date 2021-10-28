@@ -4,6 +4,7 @@ namespace PhpBeansTest;
 
 use PhpBeans\Container\Container;
 use PhpBeans\Factory\ContainerBuilder;
+use PhpBeans\Scanner\ComponentScanner;
 use Shared\Annotation\GeneratedClass;
 use Shared\Annotation\TestImport;
 use Vox\Cache\Factory;
@@ -15,6 +16,10 @@ class TestCase extends \PHPUnit\Framework\TestCase
     protected bool $withCache = false;
 
     protected string $configFile = 'tests/example/shared/configs/application.yaml';
+
+    protected array $components = [];
+
+    protected ?string $withComponentScanner = ComponentScanner::class;
 
     public function getContainer(): Container
     {
@@ -31,6 +36,8 @@ class TestCase extends \PHPUnit\Framework\TestCase
             ->withBeans(['someValue' => 'lorem ipsum'])
             ->withStereotypes(TestImport::class, GeneratedClass::class)
             ->withConfigFile($this->configFile)
+            ->withComponents(...$this->components)
+            ->withComponentScanner($this->withComponentScanner)
         ;
 
         if ($this->withCache) {

@@ -14,7 +14,7 @@ use Shared\Stub\TestImportService;
 use PHPUnit\Framework\TestCase;
 use Vox\Cache\Factory;
 
-class BeanRegistererTest extends TestCase
+class ScannedBeanRegistererTest extends TestCase
 {
     /**
      * @dataProvider provider

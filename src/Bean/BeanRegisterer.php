@@ -12,6 +12,7 @@ use PhpBeans\Annotation\Value;
 use PhpBeans\Container\Container;
 use PhpBeans\Metadata\ClassMetadata;
 use PhpBeans\Processor\AbstractStereotypeProcessor;
+use PhpBeans\Processor\PostBeanStereotypeProcessor;
 use PhpBeans\Scanner\ComponentScanner;
 
 class BeanRegisterer 
@@ -43,7 +44,7 @@ class BeanRegisterer
      */
     private array $configurators = [];
 
-    private ComponentScanner $componentScanner;
+    private ?ComponentScanner $componentScanner;
     
     private Container $container;
 
@@ -68,7 +69,14 @@ class BeanRegisterer
             ],
             $stereotypes
         );
-        $this->components = $components;
+        $this->components = array_merge(
+            [
+                ValuePostBeanProcessor::class,
+                PostBeanStereotypeProcessor::class,
+                AutowirePostBeanProcessor::class,
+            ],
+            $components
+        );
         $this->factories = $factories;
 
         $this->metadataFactory = $metadataFactory;
@@ -116,7 +124,7 @@ class BeanRegisterer
 
     public function registerClassComponents(ClassMetadata $classMetadata) {
         foreach ($classMetadata->getAnnotations() as $stereotype) {
-            $this->registerComponent($classMetadata, $stereotype);
+            $this->registerComponent($classMetadata, get_class($stereotype));
         }
     }
 
@@ -129,7 +137,9 @@ class BeanRegisterer
         }
 
         if (!$this->componentScanner) {
-            array_walk($this->components, [$this, 'registerClassComponents']);
+            array_map([$this, 'registerClassComponents'], $this->getAllComponentsMetadata());
+
+            return;
         }
 
         foreach ($this->stereotypes as $stereotypeClass) {
