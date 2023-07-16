@@ -20,12 +20,18 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
     abstract public function implementMethodBody(MethodGenerator $methodGenerator, MethodMetadata $metadata,
                                                  ClassMetadata $classMetadata);
 
+    protected function getBlacklistedMethods(): array
+    {
+        return [];
+    }
+
     public function createClassGenerator(ClassMetadata $metadata): ClassGenerator
     {
         $methods = [];
 
         foreach ($metadata->methodMetadata as $methodMetadata) {
-            if (!$methodMetadata->reflection->isAbstract()) {
+            if (!$methodMetadata->reflection->isAbstract()
+                || in_array($methodMetadata->name, $this->getBlacklistedMethods())) {
                 continue;
             }
 
