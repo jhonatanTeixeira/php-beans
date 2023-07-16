@@ -17,7 +17,8 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
 
     abstract public function getBehaviorName(): string;
 
-    abstract public function implementMethodBody(MethodGenerator $methodGenerator, MethodMetadata $metadata);
+    abstract public function implementMethodBody(MethodGenerator $methodGenerator, MethodMetadata $metadata,
+                                                 ClassMetadata $classMetadata);
 
     public function createClassGenerator(ClassMetadata $metadata): ClassGenerator
     {
@@ -35,7 +36,7 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
             $method->setAbstract(false)
                 ->setInterface(false);
 
-            $this->implementMethodBody($method, $methodMetadata);
+            $this->implementMethodBody($method, $methodMetadata, $metadata);
         }
 
         $parentClass = $metadata->getReflection()->getParentClass();

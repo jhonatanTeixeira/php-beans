@@ -4,6 +4,7 @@ namespace PhpBeans\Scanner;
 
 use Laminas\Code\Reflection\ClassReflection;
 use Metadata\MetadataFactory;
+use PhpBeans\Annotation\IgnoreScanner;
 use PhpBeans\Metadata\FileReflection;
 use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Finder\Finder;
@@ -44,8 +45,8 @@ class ComponentScanner
             $metadata = $this->metadataFactory->getMetadataForClass($class->getName());
             $metadata->fileResources[] = $class->getFileName();
 
-            if ($metadata->hasAnnotation($className) || $this->implementsInterface($class, $className)
-                || $class->isSubclassOf($className)) {
+            if (($metadata->hasAnnotation($className) || $this->implementsInterface($class, $className)
+                || $class->isSubclassOf($className)) && !$metadata->hasAnnotation(IgnoreScanner::class)) {
                 $components->attach($metadata);
             }
 

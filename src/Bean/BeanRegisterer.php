@@ -14,6 +14,8 @@ use PhpBeans\Metadata\ClassMetadata;
 use PhpBeans\Processor\AbstractStereotypeProcessor;
 use PhpBeans\Processor\PostBeanStereotypeProcessor;
 use PhpBeans\Scanner\ComponentScanner;
+use Psr\Log\LoggerInterface;
+use Vox\Log\Logger;
 
 class BeanRegisterer 
 {
@@ -49,6 +51,8 @@ class BeanRegisterer
     private Container $container;
 
     private MetadataFactory $metadataFactory;
+
+    private LoggerInterface $logger;
     
     public function __construct(Container        $container,
                                 MetadataFactory  $metadataFactory,
@@ -80,6 +84,7 @@ class BeanRegisterer
         $this->factories = $factories;
 
         $this->metadataFactory = $metadataFactory;
+        $this->logger = Logger::getLogger(__CLASS__);
     }
 
     

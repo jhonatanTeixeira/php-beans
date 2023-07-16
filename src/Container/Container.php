@@ -261,8 +261,6 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
         if ($value instanceof ClassMetadata && $value->getReflection()->isInterface()) {
             $this->interfaces[$id] = $value;
         } elseif ($value instanceof ClassMetadata) {
-//            $this->metadatas[$id] = $value;
-//            $this->registerMetadata($id, $value);
             $this->setComponent($id, $value);
         } elseif($value instanceof MethodMetadata) {
             $this->methodMetadatas[$id] = $value;

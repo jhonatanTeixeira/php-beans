@@ -4,6 +4,8 @@
 namespace ScannedTest\Bean;
 
 
+use example\shared\Stub\IgnoredClass;
+use PhpBeans\Container\NotFoundContainerException;
 use PhpBeans\Factory\ContainerBuilder;
 use Shared\Annotation\TestImport;
 use Shared\Stub\BarComponent;
@@ -70,6 +72,24 @@ class ScannedBeanRegistererTest extends TestCase
         $this->assertInstanceOf(FooComponent::class, $container->get(BazComponent::class)->getFooComponent());
         $this->assertInstanceOf(TestImportService::class, $container->get(TestImportService::class));
         $this->assertEquals("lorem ipsum", $container->get(TestImportService::class)->value);
+    }
+
+    public function testScannerShouldIgnoreIgnorableComponents()
+    {
+        $this->expectException(NotFoundContainerException::class);
+
+        $builder = new ContainerBuilder();
+
+        $builder->withAppNamespaces()
+            ->withNamespaces('ScannedTest\\')
+            ->withNamespaces('Shared\\')
+            ->withBeans(['someValue' => 'lorem ipsum'])
+            ->withConfigFile('tests/example/shared/configs/application.yaml')
+        ;
+
+        $container = $builder->build();
+
+        $container->get(IgnoredClass::class);
     }
 
     public function provider() {
