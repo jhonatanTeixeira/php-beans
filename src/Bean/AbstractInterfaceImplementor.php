@@ -18,7 +18,7 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
     abstract public function getBehaviorName(): string;
 
     abstract public function implementMethodBody(MethodGenerator $methodGenerator, MethodMetadata $metadata,
-                                                 ClassMetadata $classMetadata);
+                                                 ClassMetadata $classMetadata): string;
 
     protected function getBlacklistedMethods(): array
     {
@@ -31,6 +31,8 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
 
         foreach ($metadata->methodMetadata as $methodMetadata) {
             if (!$methodMetadata->reflection->isAbstract()
+                || $methodMetadata->reflection->isProtected()
+                || $methodMetadata->reflection->isPrivate()
                 || in_array($methodMetadata->name, $this->getBlacklistedMethods())) {
                 continue;
             }
@@ -42,7 +44,7 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
             $method->setAbstract(false)
                 ->setInterface(false);
 
-            $this->implementMethodBody($method, $methodMetadata, $metadata);
+            $method->setBody($this->implementMethodBody($method, $methodMetadata, $metadata));
         }
 
         $parentClass = $metadata->getReflection()->getParentClass();
@@ -67,12 +69,18 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
     {
         $generator = $this->createClassGenerator($classMetadata);
 
+        $className = "{$generator->getNamespaceName()}\\{$generator->getName()}";
+
+        if (class_exists($className)) {
+            return;
+        }
+
         $this->postProcess($classMetadata, $generator);
 
         eval($generator->generate());
 
         $metadata = $this->getContainer()->get(MetadataFactory::class)
-            ->getMetadataForClass("{$generator->getNamespaceName()}\\{$generator->getName()}");
+            ->getMetadataForClass($className);
 
         $this->getContainer()->set($classMetadata->name, $metadata);
     }

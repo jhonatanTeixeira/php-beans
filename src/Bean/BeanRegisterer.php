@@ -6,7 +6,6 @@ use Metadata\MetadataFactory;
 use PhpBeans\Annotation\Bean;
 use PhpBeans\Annotation\Component;
 use PhpBeans\Annotation\Configuration;
-use PhpBeans\Annotation\Imports;
 use PhpBeans\Annotation\PostBeanProcessor;
 use PhpBeans\Annotation\Value;
 use PhpBeans\Container\Container;
@@ -17,7 +16,7 @@ use PhpBeans\Scanner\ComponentScanner;
 use Psr\Log\LoggerInterface;
 use Vox\Log\Logger;
 
-class BeanRegisterer 
+class BeanRegisterer
 {
     use ValueProcessorTrait;
 
@@ -25,7 +24,7 @@ class BeanRegisterer
      * @var string[]
      */
     private array $namespaces = [];
-    
+
     /**
      * @var string[]
      */
@@ -47,13 +46,13 @@ class BeanRegisterer
     private array $configurators = [];
 
     private ?ComponentScanner $componentScanner;
-    
+
     private Container $container;
 
     private MetadataFactory $metadataFactory;
 
     private LoggerInterface $logger;
-    
+
     public function __construct(Container        $container,
                                 MetadataFactory  $metadataFactory,
                                 ComponentScanner $componentScanner = null,
@@ -61,7 +60,7 @@ class BeanRegisterer
                                 array            $components = [], array $factories = []) {
         $this->componentScanner = $componentScanner;
         $this->container = $container;
-        
+
         $this->namespaces = array_merge(['PhpBeans\\'], $namespaces);
         $this->stereotypes = array_merge(
             [
@@ -87,19 +86,18 @@ class BeanRegisterer
         $this->logger = Logger::getLogger(__CLASS__);
     }
 
-    
     public function addNamespace(string $namespace) {
         $this->namespaces[] = $namespace;
 
         return $this;
     }
-    
+
     public function addStereotype(string $class) {
         $this->stereotypes[] = $class;
 
         return $this;
     }
-    
+
     public function addComponent(string $class) {
         $this->components[] = $class;
 
@@ -154,13 +152,13 @@ class BeanRegisterer
                 $this->componentScanner->scanComponentsFor($stereotypeClass, ...$namespaces),
                 $this->getAllComponentsMetadata(),
             );
-            
+
             foreach ($components as $metadata) {
                 $this->registerComponent($metadata, $stereotypeClass);
             }
         }
     }
-    
+
     public function registerFactories() {
         foreach ($this->container->getMetadataByComponent(Configuration::class) as $cfgid => $config) {
             foreach ($config->getAnnotatedMethods(Bean::class) as $factory) {
@@ -174,23 +172,25 @@ class BeanRegisterer
             $this->container->setFactory($id, $factory);
         }
     }
-    
+
     public function registerComponent(ClassMetadata $metadata, string $stereotypeClass = null) {
-        $beanId = $metadata->name;
+        $this->container->set($metadata->name, $metadata);
 
         if ($stereotypeClass && $metadata->hasAnnotation($stereotypeClass)) {
             $component = $metadata->getAnnotation($stereotypeClass);
 
-            if (property_exists($component, 'name')) {
-                $beanId = $component->name ?? $metadata->name;
+            if (property_exists($component, 'name') && $component->name) {
+                $this->container->set($component->name, $metadata);
             }
         }
 
-        $this->container->set($beanId, $metadata);
+        foreach ($metadata->reflection->getInterfaceNames() as $interface) {
+            $this->container->set($interface, $metadata);
+        }
 
         return $this;
     }
-    
+
     public function resolveConfigurationValues() {
         foreach ($this->container->getBeansByComponent(Configuration::class) as $configuration) {
             $metadata = $this->metadataFactory->getMetadataForClass(get_class($configuration));

@@ -19,10 +19,10 @@ class InterfaceGenerator extends AbstractInterfaceImplementor
     }
 
     public function implementMethodBody(MethodGenerator $methodGenerator, MethodMetadata $metadata,
-                                        ClassMetadata $classMetadata)
+                                        ClassMetadata $classMetadata): string
     {
         if ($metadata->name == 'processValue') {
-            $methodGenerator->setBody('return $value + $this->component->getValue();');
+            return 'return $value + $this->component->getValue();';
         }
     }
 

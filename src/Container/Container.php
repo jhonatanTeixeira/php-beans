@@ -88,6 +88,10 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
                 $this->beans[$id] = $this->newInstance($id);
             }
 
+            if (!isset($this->metadatas[$id])) {
+                $this->metadatas[$id] = $this->getMetadataFactory()->getMetadataForClass(get_class($this->beans[$id]));
+            }
+
             if ($this->beans[$id] instanceof ContainerAwareInterface) {
                 $this->beans[$id]->setContainer($this);
             }
@@ -360,11 +364,23 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
      * @return ClassMetadata[]
      */
     public function getMetadataByComponent(string $component) {
-        return array_filter(
+        $classMetadatas = array_filter(
             $this->metadatas,
             fn(ClassMetadata $metadata) => $metadata->hasAnnotation($component)
                 || $metadata->isInstanceOf($component)
         );
+
+        foreach ($this->methodMetadatas as $id => $methodMetadata) {
+            $returnType = $methodMetadata->getReturnType();
+
+            if ($returnType && class_exists($returnType) && is_a($returnType, $component, true)) {
+                $instance = $this->newInstanceFromMethodMatadata($id);
+                $this->metadatas[$id] = $this->getMetadataFactory()->getMetadataForClass(get_class($instance));
+                $classMetadatas[$id] = $this->metadatas[$id];
+            }
+        }
+
+        return $classMetadatas;
     }
 
     public function getBeansByComponent(string $component) {
