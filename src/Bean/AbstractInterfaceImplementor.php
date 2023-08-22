@@ -15,6 +15,8 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
 {
     use ContainerAwareTrait;
 
+    public ?string $cacheDir = 'build/generated';
+
     abstract public function getBehaviorName(): string;
 
     abstract public function implementMethodBody(MethodGenerator $methodGenerator, MethodMetadata $metadata,
@@ -67,19 +69,30 @@ abstract class AbstractInterfaceImplementor implements ContainerAwareInterface
 
     public function implementsClass(ClassMetadata $classMetadata)
     {
-        $generator = $this->createClassGenerator($classMetadata);
+        $className = "{$classMetadata->name}Impl";
+        $filename = "{$this->cacheDir}/" . str_replace('\\', '_', $className) . ".php";
 
-        $className = "{$generator->getNamespaceName()}\\{$generator->getName()}";
+        if (!class_exists($className) && file_exists($filename) && $classMetadata->isFresh()) {
+            require_once $filename;
+        } elseif (!class_exists($className) && !file_exists($filename) || !$classMetadata->isFresh()) {
+            $generator = $this->createClassGenerator($classMetadata);
+            $this->postProcess($classMetadata, $generator);
 
-        if (class_exists($className)) {
-            return;
+            if ($this->cacheDir) {
+                if (!is_dir($this->cacheDir)) {
+                    mkdir($this->cacheDir, 0755, true);
+                }
+
+                file_put_contents($filename, "<?php \n" . $generator->generate());
+
+                require_once $filename;
+            } else {
+                eval($generator->generate());
+            }
         }
 
-        $this->postProcess($classMetadata, $generator);
-
-        eval($generator->generate());
-
-        $metadata = $this->getContainer()->get(MetadataFactory::class)
+        $metadata = $this->getContainer()
+            ->get(MetadataFactory::class)
             ->getMetadataForClass($className);
 
         $this->getContainer()->set($classMetadata->name, $metadata);

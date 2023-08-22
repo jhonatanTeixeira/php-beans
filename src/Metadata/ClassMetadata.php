@@ -6,13 +6,17 @@ use ReflectionClass;
 use ReflectionParameter;
 use Vox\Metadata\ClassMetadata as BaseMetadata;
 use Vox\Metadata\MethodMetadata;
+use Vox\Metadata\ParamMetadata;
 use Vox\Metadata\PropertyMetadata;
 
 class ClassMetadata extends BaseMetadata
 {
     use ParamResolverTrait;
 
-    public function getConstructorParams() {
+    /**
+     * @return array<ParamMetadata>
+     */
+    public function getConstructorParams(): array {
         $constructor = $this->getConstructor();
         
         if (!$constructor) {
@@ -64,6 +68,7 @@ class ClassMetadata extends BaseMetadata
     }
 
     public function getConstructor(): ?MethodMetadata {
-        return $this->methodMetadata['__construct'] ?? null;
+        $ctor = $this->reflection->getConstructor();
+        return $this->methodMetadata[$ctor ? $ctor->name : null] ?? null;
     }
 }

@@ -53,11 +53,15 @@ class BeanRegisterer
 
     private LoggerInterface $logger;
 
-    public function __construct(Container        $container,
-                                MetadataFactory  $metadataFactory,
-                                ComponentScanner $componentScanner = null,
-                                array            $namespaces = [], array $stereotypes = [],
-                                array            $components = [], array $factories = []) {
+    public function __construct(
+        Container $container,
+        MetadataFactory $metadataFactory,
+        ComponentScanner $componentScanner = null,
+        array $namespaces = [],
+        array $stereotypes = [],
+        array $components = [],
+        array $factories = [],
+    ) {
         $this->componentScanner = $componentScanner;
         $this->container = $container;
 
@@ -205,7 +209,12 @@ class BeanRegisterer
         $this->registerComponents();
         $this->resolveConfigurationValues();
         $this->registerFactories();
+        $this->implementInterfaces();
+        $this->postProccess();
+    }
 
+    public function implementInterfaces()
+    {
         $interfaceImplementors = $this->container
             ->getBeansByComponent(AbstractInterfaceImplementor::class);
 
@@ -219,7 +228,10 @@ class BeanRegisterer
                 $interfaceImplementor->implementsClass($interface);
             }
         }
+    }
 
+    public function postProccess()
+    {
         /* @var $processor AbstractStereotypeProcessor */
         foreach ($this->container->getBeansByComponent(AbstractStereotypeProcessor::class) as $processor) {
             $processor->findAndProcess();

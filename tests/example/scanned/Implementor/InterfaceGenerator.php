@@ -35,6 +35,6 @@ class InterfaceGenerator extends AbstractInterfaceImplementor
             ],
             MethodGenerator::FLAG_PUBLIC,
             '$this->component = $component;'
-        );
+        )->addProperty('component');
     }
 }

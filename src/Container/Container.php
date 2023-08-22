@@ -14,14 +14,14 @@ use PhpBeans\Metadata\ClassMetadata;
 use Psr\Container\ContainerInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
-use Psr\SimpleCache\CacheInterface;
 use Traversable;
 use Vox\Log\Logger;
 use Vox\Metadata\FunctionMetadata;
 use Vox\Metadata\MethodMetadata;
 use Vox\Metadata\ParamMetadata;
+use Serializable;
 
-class Container implements ContainerInterface, ContainerWriterInterface, IteratorAggregate
+class Container implements ContainerInterface, ContainerWriterInterface, IteratorAggregate, Serializable
 {
     private $beans = [];
 
@@ -44,8 +44,6 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
 
     private EventDispatcherInterface $eventDispatcher;
 
-    private ?CacheInterface $cache;
-
     public bool $debug;
 
     private LoggerInterface $logger;
@@ -59,10 +57,8 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     private const INSTANTIATING = 1;
     private const INSTANTIATED = 2;
 
-    public function __construct(EventDispatcherInterface $eventDispatcher, $debug = false,
-                                ?CacheInterface $cache = null) {
+    public function __construct(EventDispatcherInterface $eventDispatcher, $debug = false) {
         $this->eventDispatcher = $eventDispatcher;
-        $this->cache = $cache;
         $this->beans[get_class($this)] = $this;
         $this->debug = $debug;
         $this->logger = Logger::getLogger(__CLASS__);
@@ -78,9 +74,7 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
         }
 
         if (!isset($this->beans[$id])) {
-            if ($this->hasCache($id)) {
-                $this->beans[$id] = $this->getFromCache($id);
-            } elseif (isset($this->factories[$id])) {
+            if (isset($this->factories[$id])) {
                 $this->beans[$id] = $this->newInstanceFromFactory($id);
             } elseif (isset($this->methodMetadatas[$id])) {
                 $this->beans[$id] = $this->newInstanceFromMethodMatadata($id);
@@ -115,8 +109,6 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
         $instance = $this->getMetadata($id)->getReflection()->newInstanceArgs($constructorParams);
         $this->statuses[$id] = self::INSTANTIATED;
         $this->eventDispatcher->dispatch(new AfterInstanceBeanEvent($instance, $id));
-
-        $this->addToCache($id, $instance);
 
         return $instance;
     }
@@ -162,9 +154,13 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     }
 
     private function getInjects(\ReflectionParameter $param) {
-        $injects = $param->getAttributes(Injects::class)[0] ?? null;
+        if (version_compare(phpversion(), '8.0.0', '>=')) {
+            $injects = $param->getAttributes(Injects::class)[0] ?? null;
 
-        return $injects?->newInstance()->beanId;
+            return $injects?->newInstance()->beanId;
+        }
+
+        return null;
     }
 
     private function isPath(string $path): bool {
@@ -242,8 +238,7 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     }
 
     public function has($id): bool {
-        return $this->hasCache($id)
-            || isset($this->beans[$id])
+        return isset($this->beans[$id])
             || isset($this->metadatas[$id])
             || isset($this->factories[$id])
             || isset($this->methodMetadatas[$id]);
@@ -310,7 +305,7 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     }
 
     public function hasFactory(string $id) {
-        return isset($this->factories[$id]);
+        return isset($this->methodMetadatas[$id]);
     }
 
     private function isInstantianting(string $name) {
@@ -318,15 +313,15 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     }
 
     public function getMetadata(string $id): ClassMetadata {
-        return $this->metadatas[$id];
+        return $this->metadatas[$id] ?? $this->getMetadataFactory()->getMetadataForClass($id);
     }
 
     public function getBean(string $id) {
         return $this->beans[$id];
     }
 
-    public function getFactory(string $id): callable {
-        return $this->factories[$id];
+    public function getFactory(string $id): ?MethodMetadata {
+        return $this->methodMetadatas[$id] ?? null;
     }
 
     /**
@@ -335,6 +330,11 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
     public function getInterfaces(): array
     {
         return $this->interfaces;
+    }
+
+    public function hasInterface($id): bool
+    {
+        return isset($this->interfaces[$id]);
     }
 
     public function __get($id) {
@@ -408,33 +408,32 @@ class Container implements ContainerInterface, ContainerWriterInterface, Iterato
         return $this->hasMetadata($id) && $this->getMetadata($id)->isFresh();
     }
 
-    public function addToCache(string $id, $value) {
-        try {
-            $name = "container.bean.$id";
-
-            if ($this->cache) {
-                $this->cache->set($name, $value);
-            }
-        } catch (\Throwable $e) {
-            $this->logger->debug("cannot set cache item {$id} due to: {$e->getMessage()}");
-        }
+    public function serialize()
+    {
+        return serialize([
+            $this->metadatas,
+            array_filter($this->beans, fn($i) => !$i instanceof self),
+            $this->methodMetadatas,
+            $this->interfaces,
+            $this->eventDispatcher,
+            $this->debug,
+            $this->logger,
+        ]);
     }
 
-    public function getFromCache(string $id) {
-        $name = "container.bean.$id";
+    public function unserialize($data)
+    {
+        [
+            $this->metadatas,
+            $this->beans,
+            $this->methodMetadatas,
+            $this->interfaces,
+            $this->eventDispatcher,
+            $this->debug,
+            $this->logger,
+        ] = unserialize($data);
 
-        return $this->cache->get($name);
-    }
-
-    public function hasCache($id): bool {
-        $name = "container.bean.$id";
-
-        return $this->cache && $this->cache->has($name) && $this->isFresh($id);
-    }
-
-    public function cacheUp() {
-        foreach ($this->beans as $id => $bean) {
-            $this->addToCache($id, $bean);
-        }
+        $this->beans[self::class] = $this;
+        $this->beans[ContainerInterface::class] = $this;
     }
 }

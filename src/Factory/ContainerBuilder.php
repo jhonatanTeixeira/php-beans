@@ -3,6 +3,7 @@
 namespace PhpBeans\Factory;
 
 use Composer\Autoload\ClassLoader;
+use Metadata\MetadataFactoryInterface;
 use PhpBeans\Bean\BeanRegisterer;
 use PhpBeans\Container\Container;
 use PhpBeans\Metadata\ClassMetadata;
@@ -144,7 +145,10 @@ class ContainerBuilder
     }
 
     public function build(): Container {
-        $container = new Container($this->eventDispatcher, $this->debug, $this->cache);
+        $hasCache = !$this->debug && $this->cache && $this->cache->has('container');
+
+        $container = $hasCache ? $this->cache->get('container') : new Container($this->eventDispatcher, $this->debug);
+        $container->set('debug', $this->debug);
 
         if ($this->configFile) {
             foreach ($this->configFile as $id => $config) {
@@ -159,9 +163,11 @@ class ContainerBuilder
         $factory = $this->buildMetadataFactory();
 
         $container->set(get_class($factory), $factory);
+        $container->set(MetadataFactoryInterface::class, $factory);
         $container->set(get_class($this->eventDispatcher), $this->eventDispatcher);
+        $container->set(EventDispatcherInterface::class, $this->eventDispatcher);
 
-        if (isset($this->cache)) {
+        if ($this->cache) {
             $factory->setCache(new PsrSimpleCacheAdapter($this->cache));
         }
 
@@ -182,10 +188,15 @@ class ContainerBuilder
             $this->factories,
         );
 
-        $registerer->registerBeans();
+        if ($hasCache) {
+            $registerer->postProccess();
+        } else {
+            $registerer->registerBeans();
+        }
 
-        if (!$this->debug) {
-            $container->cacheUp();
+        if ($this->cache) {
+            $this->cache->set('container', $container);
+            $container->set(CacheInterface::class, $this->cache);
         }
 
         return $container;

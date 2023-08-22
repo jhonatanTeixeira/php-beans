@@ -5,6 +5,7 @@ namespace ScannedTest\Bean;
 
 
 use example\shared\Stub\IgnoredClass;
+use PhpBeans\Cache\ContainerCacheGenerator;
 use PhpBeans\Container\NotFoundContainerException;
 use PhpBeans\Factory\ContainerBuilder;
 use Shared\Annotation\TestImport;
